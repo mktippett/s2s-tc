@@ -88,7 +88,8 @@ one hdate year of tracks (one member), genesis density, track density, and month
 by basin, all against IBTrACS v04r01 (`data/obs/`, downloaded from NCEI). These are
 exploratory figures; the definitions are in the script docstring and the figure titles.
 Key choices:
-- Storms count if they reach ≥34 kt.
+- Storms count if their lifetime max wind reaches 34 kt (IBTrACS) or 30 kt (model). The model
+  value is an ad hoc choice that roughly matches the observed global count, and may be revised.
 - Model genesis is the first track point. Storms first seen at lead 1 are dropped: they may
   already exist at initialization.
 - Rates are per-forecast means × 365/41 (genesis, leads 2–42) or × 365/42 (track points).

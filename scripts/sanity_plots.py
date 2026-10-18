@@ -10,7 +10,9 @@ details go in the suptitles):
   04  monthly genesis count by source basin
 
 Definitions (see README "Sanity plots"):
-- Storms count only if lifetime max wind >= 34 kt (model and IBTrACS alike).
+- Tropical-storm threshold: IBTrACS 34 kt; model MODEL_TS_KT = 30 kt, an ad hoc choice for
+  sanity checking (see the constant). Storms count if lifetime max intensity (LMI) >=
+  threshold, and track points if wind >= threshold.
 - Model genesis = first track point. Storms whose first point is at lead 1 are dropped,
   since storms present at initialization first appear at lead 1 (no lead-0 point).
   Genesis rates use leads 2-42 and are scaled by 365/41; track-point rates use leads
@@ -41,7 +43,13 @@ MAP_CRS = ccrs.PlateCarree(central_longitude=205)  # Pacific-centred display
 CENTER_LON = 205
 EXTENT_LAT = (-45, 45)
 GRID = 1.5  # deg, density bins (S2S archive resolution)
-TS_KT = 34
+TS_KT = 34  # observed (IBTrACS) tropical-storm threshold
+# Model TS threshold: AD HOC choice (user, 2026-10-18) for these sanity checks; may be
+# revised. 30 kt is the model LMI 31st percentile (ECMWF 2025) and roughly matches the observed
+# global storm count. A quantile-matched value (Lee et al. 2018) would be 24 kt (q = 8.1%
+# from IBTrACS 2005-2024) or 27 kt (their 18%). The IBTrACS LMI quantile of 34 kt is still
+# printed as a diagnostic.
+MODEL_TS_KT = 30
 LEAD_MAX = 42
 BASIN_LABELS = {"atl": "N Atlantic", "enp": "E N Pacific", "cnp": "Central Pacific",
                 "wnp": "W N Pacific", "nin": "N Indian", "sin": "S Indian",
@@ -76,16 +84,22 @@ def dedup(p):
     return gen_ok, keep
 
 
-def model_events(p):
-    """Genesis rows (one per counted storm) and track points for storms reaching 34 kt."""
+def model_events(p, thr):
+    """Genesis rows and track points for model storms with LMI >= thr (kt).
+
+    Also returns the model LMI quantile of thr over the genesis-eligible population
+    (deduplicated, first point at leads 2..LEAD_MAX), as a diagnostic.
+    Returns (gen, pts, q_model).
+    """
     gen_ok, keep = dedup(p)
-    maxw = p.groupby("storm_uid").wind_kt.max()
-    ts_storms = maxw.index[maxw >= TS_KT]
+    lmi = p.groupby("storm_uid").wind_kt.max()
     first = p[p.point_num == 0].set_index("storm_uid")
-    gen = first.loc[first.index.isin(ts_storms) & gen_ok.reindex(first.index).to_numpy()]
-    gen = gen[gen.lead_days.between(2, LEAD_MAX)]
-    pts = p[keep & p.storm_uid.isin(ts_storms) & (p.wind_kt >= TS_KT) & (p.lead_days <= LEAD_MAX)]
-    return gen.reset_index(), pts
+    first = first[gen_ok.reindex(first.index).to_numpy() & first.lead_days.between(2, LEAD_MAX)]
+    q_model = float((lmi.reindex(first.index) < thr).mean())
+    ts_storms = lmi.index[lmi >= thr]
+    gen = first[first.index.isin(ts_storms)]
+    pts = p[keep & p.storm_uid.isin(ts_storms) & (p.wind_kt >= thr) & (p.lead_days <= LEAD_MAX)]
+    return gen.reset_index(), pts, q_model
 
 
 def ibtracs_basin(df):
@@ -104,9 +118,14 @@ def load_ibtracs(years):
                      usecols=["SID", "BASIN", "ISO_TIME", "NATURE", "TRACK_TYPE", "LAT", "LON", "USA_WIND"])
     df["ISO_TIME"] = pd.to_datetime(df.ISO_TIME)
     df["USA_WIND"] = pd.to_numeric(df.USA_WIND, errors="coerce")
-    df = df[(df.TRACK_TYPE == "main") & (df.NATURE == "TS") & (df.USA_WIND >= TS_KT)
-            & df.ISO_TIME.dt.hour.isin([0, 6, 12, 18]) & (df.ISO_TIME.dt.minute == 0)
-            & df.ISO_TIME.dt.year.isin(years)].copy()
+    df = df[(df.TRACK_TYPE == "main") & (df.NATURE == "TS")
+            & df.ISO_TIME.dt.hour.isin([0, 6, 12, 18]) & (df.ISO_TIME.dt.minute == 0)]
+    # observed LMI distribution: storms (incl. depression-only) first seen in `years`
+    first_year = df.groupby("SID").ISO_TIME.min().dt.year
+    lmi = df[df.SID.isin(first_year.index[first_year.isin(years)])].groupby("SID").USA_WIND.max().dropna()
+    q = float((lmi < TS_KT).mean())
+    print(f"IBTrACS LMI: {len(lmi)} storms with USA_WIND; P(LMI < {TS_KT} kt) = {q:.3f}")
+    df = df[(df.USA_WIND >= TS_KT) & df.ISO_TIME.dt.year.isin(years)].copy()
     df["lat"] = df.LAT.astype(float)
     df["lon360"] = df.LON.astype(float) % 360
     df["basin"] = ibtracs_basin(df)
@@ -114,7 +133,7 @@ def load_ibtracs(years):
     pts = df[df.ISO_TIME.dt.hour == 0]
     print(f"IBTrACS {min(years)}-{max(years)}: {len(gen)} storms >= {TS_KT} kt; "
           f"genesis basin 'other' (e.g. S Atlantic): {(gen.basin == 'other').sum()}")
-    return gen, pts
+    return gen, pts, q
 
 
 # --------------------------------------------------------------------------- helpers
@@ -217,7 +236,7 @@ def fig_tracks(p, hdate_year, every, out):
     print("wrote", out)
 
 
-def fig_monthly(gen, n_fcst, ibt_gen, years, n_boot, out, cyc):
+def fig_monthly(gen, n_fcst, ibt_gen, years, n_boot, out, cyc, ts_note):
     rng = np.random.default_rng(0)
     months = np.arange(1, 13)
     mod = (gen.groupby([gen.basin, gen.valid_time.dt.month]).size()
@@ -240,7 +259,7 @@ def fig_monthly(gen, n_fcst, ibt_gen, years, n_boot, out, cyc):
         ax.set_ylabel("storms / month")
         ax.legend(fontsize=7, loc="upper right" if b in ("sin", "aus", "spc") else "upper left")
     fig.suptitle(f"Monthly TC genesis by basin, ECMWF {cyc} reforecasts (hdates {min(years)}–{max(years)}) vs IBTrACS. "
-                 f"Storms reaching ≥{TS_KT} kt; model: first point at leads 2–{LEAD_MAX} d, mean over {n_fcst} forecasts × 365/{LEAD_MAX - 1}, "
+                 f"{ts_note}; model: first point at leads 2–{LEAD_MAX} d, mean over {n_fcst} forecasts × 365/{LEAD_MAX - 1}, "
                  f"month of genesis; IBTrACS: first ≥{TS_KT} kt point, 95% CI from {n_boot} bootstrap resamples of years",
                  fontsize=9, wrap=True)
     fig.savefig(out, dpi=150)
@@ -258,12 +277,16 @@ def main(center, year, hdate_year, every, n_boot):
 
     fig_tracks(p, hdate_year, every, out / f"sanity_01_tracks_md{year}_h{hdate_year}_m00.png")
 
-    gen, pts = model_events(p)
-    ibt_gen, ibt_pts = load_ibtracs(years)
-    print(f"model: {len(gen)} genesis events, {len(pts)} track points >= {TS_KT} kt over {n_fcst} forecasts")
+    ibt_gen, ibt_pts, q = load_ibtracs(years)
+    gen, pts, q_model = model_events(p, MODEL_TS_KT)
+    print(f"model TS threshold {MODEL_TS_KT} kt (ad hoc) = model LMI q{100 * q_model:.1f} "
+          f"(IBTrACS {TS_KT} kt = q{100 * q:.1f}); {len(gen)} genesis events, {len(pts)} track points "
+          f"over {n_fcst} forecasts")
+    ts_note = (f"TS threshold: IBTrACS {TS_KT} kt, model {MODEL_TS_KT} kt (ad hoc; model LMI q{100 * q_model:.0f}, "
+               f"IBTrACS q{100 * q:.0f})")
 
     common = (f"ECMWF {cyc} reforecasts (model_date year {year}, hdates {min(years)}–{max(years)}, "
-              f"{n_fcst} forecasts) vs IBTrACS {min(years)}–{max(years)}\nstorms reaching ≥{TS_KT} kt; "
+              f"{n_fcst} forecasts) vs IBTrACS {min(years)}–{max(years)}\n{ts_note}; "
               f"{GRID}° bins, no map smoothing; cross-basin duplicates counted once")
     H_mod = density(gen.lon360, gen.lat) / n_fcst * 365 / (LEAD_MAX - 1)
     H_obs = density(ibt_gen.lon360, ibt_gen.lat) / len(years)
@@ -275,11 +298,11 @@ def main(center, year, hdate_year, every, n_boot):
     H_mod = density(pts.lon360, pts.lat) / n_fcst * 365 / LEAD_MAX
     H_obs = density(ibt_pts.lon360, ibt_pts.lat) / len(years)
     density_figure(H_mod, H_obs,
-                   f"TC track density. {common}.\nPoints with wind ≥{TS_KT} kt: model daily 00Z at leads 1–{LEAD_MAX} d, "
+                   f"TC track density. {common}.\nPoints at or above threshold: model daily 00Z at leads 1–{LEAD_MAX} d, "
                    f"×365/{LEAD_MAX}; IBTrACS 00Z points (daily, as the model). Shared colour scale for (a), (b)",
                    "storm-days yr⁻¹", out / f"sanity_03_track_density_md{year}.png", "Blues", shared_scale=True)
 
-    fig_monthly(gen, n_fcst, ibt_gen, years, n_boot, out / f"sanity_04_monthly_genesis_md{year}.png", cyc)
+    fig_monthly(gen, n_fcst, ibt_gen, years, n_boot, out / f"sanity_04_monthly_genesis_md{year}.png", cyc, ts_note)
 
 
 if __name__ == "__main__":

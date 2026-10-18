@@ -25,12 +25,17 @@ by basin, all against IBTrACS. These are not production figures.
    - A storm whose first point is co-located with a partner is not a genesis if that partner
      started earlier, or started at the same time with a lexicographically smaller storm_uid.
    - A co-located point is kept only on the storm with the smallest uid in its `dup_of` set.
-2. **Storm selection.** Keep storms with lifetime max `wind_kt` ≥ 34.
-3. **Model genesis.** The first point (point_num 0) of a selected, genesis-eligible storm with
+2. **TS thresholds.** IBTrACS 34 kt; model T = `MODEL_TS_KT` = 30 kt (ad hoc).
+   - Diagnostics printed and put in titles: the IBTrACS LMI quantile of 34 kt, i.e.
+     P(LMI < 34) over storms first seen in the hdate years (depression-only storms included,
+     no-`USA_WIND` storms excluded); and the model LMI quantile of T over the
+     genesis-eligible population (deduplicated, first point at leads 2…42).
+3. **Storm selection.** Keep model storms with LMI ≥ T. IBTrACS keeps LMI ≥ 34 kt.
+4. **Model genesis.** The first point (point_num 0) of a selected, genesis-eligible storm with
    `lead_days` in 2…42. Storms first seen at lead 1 are dropped.
    - Rate per cell or month = count / N_fcst × 365/41, where N_fcst = rows of `members`.
-4. **Model track points.** Points of selected storms with wind ≥ 34 kt, lead ≤ 42, kept by
-   the dedup rule. Rate = count / N_fcst × 365/42 (storm-days per year).
+5. **Model track points.** Points of selected storms with wind ≥ T, lead ≤ 42, kept by the
+   dedup rule. Rate = count / N_fcst × 365/42 (storm-days per year).
 5. **IBTrACS.**
    - Genesis = first filtered (≥34 kt) 6-hourly point per SID.
    - Track points = filtered points at 00Z only, matching the model's daily cadence.
@@ -54,7 +59,8 @@ by basin, all against IBTrACS. These are not production figures.
 ## 5. Constants & Scientific Rationale
 | name | value | why |
 |---|---|---|
-| `TS_KT` | 34 kt | user choice (a), 2026-10-18: like-for-like with the IBTrACS ≥34 kt filter. Caveat: CY49R1 winds run high compared with earlier cycles |
+| `TS_KT` | 34 kt | observed TS threshold. It is used directly for IBTrACS, and its LMI quantile sets the model threshold |
+| `MODEL_TS_KT` | 30 kt | **Ad hoc** (user, 2026-10-18), for sanity checking only; may be revised. It roughly matches the observed global count (ECMWF 2025: 87.1 vs 86.5 storms/yr) and is the model LMI 31st percentile. Rejected: 34 kt (64/yr, CY49R1 winds not comparable to obs); LMI quantile matching after Lee et al. (2018, WAF 33, doi:10.1175/WAF-D-17-0165.1), which gives 24 kt with q = 8.1% from IBTrACS 2005–2024, or 27 kt with their 18%. The observed q is low because SI/SP agencies rarely archive depressions (0–1% of storms there, against 12–14% in WP/EP) |
 | lead-1 drop | first point at lead 1 → not genesis | user decision 2026-10-18. No lead-0 point exists, so storms present at initialization first appear at lead 1. All 4,988 storms first seen poleward of 38° start at lead 1 |
 | `LEAD_MAX` | 42 d | window of 6 whole weeks, as in the neuralGCM project; genesis scale 365/41 because lead 1 is excluded |
 | `GRID` | 1.5° | S2S archive resolution; default proposed 2026-10-18, not objected to |
@@ -72,26 +78,30 @@ by basin, all against IBTrACS. These are not production figures.
 - **Run from `scripts/`** (sibling imports).
 
 ## Open items
-- N Atlantic and E N Pacific counts are ~1/3 of IBTrACS at the 34 kt threshold. Decision:
-  re-plot all tracked storms (any intensity) to separate a missing-disturbance problem from
-  a weak-intensity problem.
+- `MODEL_TS_KT` = 30 kt is ad hoc. Decision: keep it, or adopt a principled rule
+  (quantile matching with a basin-consistent observed q, a fixed 18%, or per-cycle matching
+  for multi-cycle use).
+- At 30 kt, N Atlantic and E N Pacific are still about half of IBTrACS (7.5 and 9.5 vs
+  16.4/yr), while the SH and WNP are over. Decision: is the AL/EP deficit a model property
+  to document, or worth checking with all tracked storms?
 
 ## 7. Synchronization Log
 | date | code change | spec updated |
 |---|---|---|
 | 2026-10-18 | created; production run n_boot = 10000 on the ECMWF 2025 model_date year | created |
+| 2026-10-18 | model TS threshold: 34 kt → LMI quantile matching (24 kt) → ad hoc `MODEL_TS_KT` = 30 kt; IBTrACS LMI quantile printed as a diagnostic | Algorithm 2–5, Constants, Open items |
 
 ## Verification snippet
 ```python
 import sys; sys.path.insert(0, "scripts")
 import sanity_plots as s
 p, m = s.load_model("ecmwf", 2025)
-gen, pts = s.model_events(p)
-assert gen.lead_days.between(2, 42).all() and (pts.wind_kt >= 34).all()
+gen, pts, q_model = s.model_events(p, s.MODEL_TS_KT)
+assert gen.lead_days.between(2, 42).all() and (pts.wind_kt >= s.MODEL_TS_KT).all()
 assert gen.storm_uid.is_unique
 rate = len(gen) / len(m) * 365 / 41
 assert 40 < rate < 100, rate   # global storms per year
-ig, ip = s.load_ibtracs(list(range(2005, 2025)))
+ig, ip, q = s.load_ibtracs(list(range(2005, 2025)))
 assert (ig.basin != "other").all() and (ip.ISO_TIME.dt.hour == 0).all()
 print(f"ok: model {rate:.1f}/yr, IBTrACS {len(ig) / 20:.1f}/yr")
 ```
