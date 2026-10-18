@@ -1,0 +1,24 @@
+# project data and run logs (regenerable from the FTP)
+data/
+logs/
+*.part
+
+# local Claude Code instructions (never public)
+CLAUDE.md
+
+# large data formats
+*.nc
+*.zarr/
+*.h5
+*.grib
+*.grb
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# secrets and OS clutter
+.env
+.env.*
+.DS_Store
