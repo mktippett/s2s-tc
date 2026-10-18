@@ -79,6 +79,10 @@ An empty basin is the single line `00000 00/00/0000 M= 0  0 SNBR=   0`.
 - **Time.** In the ECMWF data, points are daily at 00Z only, at leads 1–46 days. There is
   never a lead-0 point, even though *(doc)* says storms present at initialization are included.
 - **Gaps.** Consecutive points can be 2, 3 or 4 days apart (~6% of steps).
+- **Genesis domain |lat| < 38°.** After lead 1, no storm starts poleward of 37.9° (ECMWF
+  2025 model_date year). All 4,988 storms whose first point is poleward of 38° first appear
+  at lead 1, i.e. they already existed at initialization. So lead-1 first points mix storms
+  present at initialization with new genesis, and the sanity plots drop them.
 
 **Trailer.** `TD`, `TS`, `HR`, and the **undocumented** `HR1`–`HR5`. The category is a
 function of lifetime-maximum wind: TD < 35 ≤ TS < 64 ≤ HR kt. The HRn digit follows
@@ -86,9 +90,13 @@ Saffir–Simpson thresholds shifted **1 kt low**: HR2 ≥ 82, HR3 ≥ 95, HR4 �
 (standard 83/96/113). HR5 has not been observed.
 
 ## Basin files and duplicates
-- **A basin file is not a geographic clip.** A storm keeps its full track in one file even
-  after it crosses a basin boundary (e.g. `wnp` points reach 269°E). So "basin" is presumably
-  the genesis basin; this has not yet been checked against first-point location.
+- **A basin file is not a geographic clip; it is the genesis basin.** A storm keeps its full
+  track in one file even after it crosses a basin boundary (e.g. `wnp` points reach 269°E).
+  First points fall inside their file's region without exception (ECMWF 2025):
+  sin < 90°E ≤ aus < 160°E ≤ spc (SH); wnp < 180° ≤ cnp < 220°E (140°W) ≤ enp.
+  nin/wnp (87–103°E) and atl/enp (102–87°W) split along the coastline, not a meridian.
+  For IBTrACS, `sanity_plots.py` uses its BASIN field for those two splits and the meridians
+  above for the rest.
 - **Storms crossing between basin groups appear in both groups' files**, with overlapping
   segments. Pairs: nin–wnp, atl–enp, and rarely nin–sin, aus–nin, aus–wnp, enp–spc.
   Within a group there are no co-located points.

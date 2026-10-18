@@ -78,9 +78,21 @@ ECMWF, regenerable from the FTP.
 | model_date year | downloaded | consolidated |
 |---|---|---|
 | 2025 | ✓ | ✓ |
-| 2024 | ✓ | |
-| 2023 | ✓ (5 undeliverable) | |
+| 2024 | ✓ | ✓ |
+| 2023 | ✓ (5 undeliverable) | ✓ |
 | 2015–2022, 2026 | | |
+
+## Sanity plots
+`cd scripts && python sanity_plots.py ecmwf 2025` writes `plots/ecmwf/sanity_0[1-4]_*.png`:
+one hdate year of tracks (one member), genesis density, track density, and monthly genesis
+by basin, all against IBTrACS v04r01 (`data/obs/`, downloaded from NCEI). These are
+exploratory figures; the definitions are in the script docstring and the figure titles.
+Key choices:
+- Storms count if they reach ≥34 kt.
+- Model genesis is the first track point. Storms first seen at lead 1 are dropped: they may
+  already exist at initialization.
+- Rates are per-forecast means × 365/41 (genesis, leads 2–42) or × 365/42 (track points).
+- Cross-basin duplicates are counted once.
 
 ## Data credit and terms
 The track data are produced by ECMWF for the WWRP/WCRP

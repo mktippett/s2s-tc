@@ -70,7 +70,30 @@ downloaded.
   `data/inventory/ecmwf_reforecasts_failed_<year>.csv` and are absent from
   `members_<year>`, so they count as missing forecasts.
 
-## 2025 model_date year (consolidated)
+## Consolidated years
+| model_date year | cycles | archives | forecasts | storms | points | dup-flagged storms |
+|---|---|---|---|---|---|---|
+| 2023 | CY47R3 (to 06-26), CY48R1 (from 06-29) | 2,075 (5 undeliverable) | 22,825 | 372,636 | 2.09 M | 1.62% |
+| 2024 | CY48R1 (to 11-11), CY49R1 (from 11-17) | 2,260 | 24,860 | 403,631 | 2.28 M | 1.67% |
+| 2025 | CY49R1 | 3,720 | 40,920 | 694,237 | 3.90 M | 1.71% |
+
+All format checks pass in all three years. No offset member numbers and no SH-file `-` latitudes.
+
+### Intensity changes with CY49R1
+Storm statistics by cycle (2023–2025 model_date years):
+
+| cycle | storms/forecast | mean lifetime max wind (kt) | p99 max wind | p01 min MSLP (hPa) | reach TS | reach HR |
+|---|---|---|---|---|---|---|
+| CY47R3 | 14.1 | 34.5 | 61 | 966 | 43% | 0.7% |
+| CY48R1 | 16.9 | 33.6 | 60 | 966 | 38% | 0.5% |
+| CY49R1 | 17.0 | 36.1 | 69 | 965 | 48% | 2.1% |
+
+With CY49R1, winds rise markedly (+9 kt at p99, HR fraction ×4) while MSLP extremes are
+unchanged. Possibly a change in the wind diagnostic rather than in storm depth
+(unverified; a wind–pressure relation by cycle would test it). **Wind-based categories
+are not comparable across the CY48R1→CY49R1 boundary.**
+
+## 2025 model_date year (details)
 - All CY49R1: 186 model_dates, hindcast years 2005–2024, 11 members, 3,720 archives.
 - 40,920 forecasts, 694,237 storms, 3.9 M points.
 - Categories: TD 365k, TS 314k, HR1 13.8k, HR2 987, HR3 149, HR4 10.
