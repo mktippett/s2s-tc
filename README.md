@@ -89,7 +89,9 @@ by basin, all against IBTrACS v04r01 (`data/obs/`, downloaded from NCEI). These 
 exploratory figures; the definitions are in the script docstring and the figure titles.
 Key choices:
 - Storms count if their lifetime max wind reaches 34 kt (IBTrACS) or 30 kt (model). The model
-  value is an ad hoc choice that roughly matches the observed global count, and may be revised.
+  value is an ad hoc choice that may be revised. It roughly matches the observed global storm
+  count, and also the pooled frequency of the weekly basin-occupancy event scored in a
+  NeuralGCM–ECMWF comparison. Basin-level biases remain.
 - Model genesis is the first track point. Storms first seen at lead 1 are dropped: they may
   already exist at initialization.
 - Rates are per-forecast means × 365/41 (genesis, leads 2–42) or × 365/42 (track points).

@@ -84,6 +84,11 @@ An empty basin is the single line `00000 00/00/0000 M= 0  0 SNBR=   0`.
   at lead 1, i.e. they already existed at initialization. So lead-1 first points mix storms
   present at initialization with new genesis, and the sanity plots drop them.
 
+**Lifetime-max floor.** Every storm reaches at least 21 kt. In the ECMWF 2025 model_date
+year the minimum LMI is exactly 21 kt (11,846 of 694,237 storms), while individual points
+go down to 3 kt. This is presumably a tracker retention criterion (not in *(doc)*), so any
+model intensity threshold at or below 21 kt selects every storm.
+
 **Trailer.** `TD`, `TS`, `HR`, and the **undocumented** `HR1`–`HR5`. The category is a
 function of lifetime-maximum wind: TD < 35 ≤ TS < 64 ≤ HR kt. The HRn digit follows
 Saffir–Simpson thresholds shifted **1 kt low**: HR2 ≥ 82, HR3 ≥ 95, HR4 ≥ 112 kt

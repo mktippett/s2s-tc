@@ -60,7 +60,7 @@ by basin, all against IBTrACS. These are not production figures.
 | name | value | why |
 |---|---|---|
 | `TS_KT` | 34 kt | observed TS threshold. It is used directly for IBTrACS, and its LMI quantile sets the model threshold |
-| `MODEL_TS_KT` | 30 kt | **Ad hoc** (user, 2026-10-18), for sanity checking only; may be revised. It roughly matches the observed global count (ECMWF 2025: 87.1 vs 86.5 storms/yr) and is the model LMI 31st percentile. Rejected: 34 kt (64/yr, CY49R1 winds not comparable to obs); LMI quantile matching after Lee et al. (2018, WAF 33, doi:10.1175/WAF-D-17-0165.1), which gives 24 kt with q = 8.1% from IBTrACS 2005–2024, or 27 kt with their 18%. The observed q is low because SI/SP agencies rarely archive depressions (0–1% of storms there, against 12–14% in WP/EP) |
+| `MODEL_TS_KT` | 30 kt | **Ad hoc** (user, 2026-10-18), for sanity checking only; may be revised. It roughly matches the observed global count (ECMWF 2025: 87.1 vs 86.5 storms/yr) and is the model LMI 31st percentile. It also matches the pooled frequency of the weekly basin-occupancy event scored in the neuralGCM ECMWF comparison: pooled bias −0.003 against an observed rate of 0.511, crossing zero near 29.8 kt; basin biases range from −0.19 (AL) to +0.17 (SP). Reported by that session (`neuralGCM/analysis/specs/ecmwf_comparison.md` §5–6) and not re-run here. Rejected: 34 kt (64/yr, CY49R1 winds not comparable to obs); LMI quantile matching after Lee et al. (2018, WAF 33, doi:10.1175/WAF-D-17-0165.1), which gives 24 kt with q = 8.1% from IBTrACS 2005–2024, or 27 kt with their 18%. The observed q is low because SI/SP agencies rarely archive depressions (0–1% of storms there, against 12–14% in WP/EP) |
 | lead-1 drop | first point at lead 1 → not genesis | user decision 2026-10-18. No lead-0 point exists, so storms present at initialization first appear at lead 1. All 4,988 storms first seen poleward of 38° start at lead 1 |
 | `LEAD_MAX` | 42 d | window of 6 whole weeks, as in the neuralGCM project; genesis scale 365/41 because lead 1 is excluded |
 | `GRID` | 1.5° | S2S archive resolution; default proposed 2026-10-18, not objected to |
@@ -90,6 +90,7 @@ by basin, all against IBTrACS. These are not production figures.
 |---|---|---|
 | 2026-10-18 | created; production run n_boot = 10000 on the ECMWF 2025 model_date year | created |
 | 2026-10-18 | model TS threshold: 34 kt → LMI quantile matching (24 kt) → ad hoc `MODEL_TS_KT` = 30 kt; IBTrACS LMI quantile printed as a diagnostic | Algorithm 2–5, Constants, Open items |
+| 2026-10-18 | no code change; added the second line of evidence for 30 kt (pooled event frequency, neuralGCM comparison) | Constants |
 
 ## Verification snippet
 ```python
