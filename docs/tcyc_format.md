@@ -1,8 +1,12 @@
 # TCYC archive format
 
 The S2S tropical-cyclone track archive on ECMWF's FTP server. Facts here are **verified
-against data** unless marked *(doc)*, meaning the archive's own `TCTRACK_Documentation.docx`,
-which is wrong or incomplete in several places noted below. Verified so far on ECMWF
+against data** unless marked *(doc)*, meaning the archive's own
+`TCTRACK_Documentation.20211005.docx`, which is wrong or incomplete in several places noted
+below. The archive also holds an older undated `TCTRACK_Documentation.docx`, identical except
+that it names both header numbers "C" and describes only per-basin numbering; the 20211005
+revision adds the C1/C2 distinction. Its method text cites "Vitart et al. (2001)", which is
+not in its reference list (only 1997 and 2012 are). Verified so far on ECMWF
 reforecasts only. Other centers use the same tracker and nominal format, but **re-verify
 every item before trusting it for another center**. Center-specific details are in
 `docs/<center>.md`.
@@ -24,7 +28,7 @@ TCYC/
   <center>/real-time/<YYYY>/<MM>/TC.<date>                         (doc; not inspected)
   <center>/reforecasts/<YYYY>/<MM>/TC.<center>.<hdate>.<model_date>
   era5/tcyc.EA.<year>          ERA5 tracks with the same tracker, 1959–2024
-  TCTRACK_Documentation*.docx
+  TCTRACK_Documentation.docx, TCTRACK_Documentation.20211005.docx   (both mtime 2022-10-31)
 ```
 Centers present: bom cma cnrm eccc ecmwf hmcr iap isac jma kma ncep ukmo. There is also a
 stray `20190101/` directory, not inspected.
